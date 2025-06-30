@@ -1,25 +1,48 @@
-import time
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
-wanted_job = input("search for your job: ")
-wanted_location = input("Enter location that you want: ")
+class JobScraper:
+    def __init__(self, job_title, location):
+        self.job_title = job_title
+        self.location = location
+        self.jobs_data = []
 
-driver = webdriver.Firefox()
+        options = Options()
+        options.headless = True 
+        self.driver = webdriver.Firefox(options=options)
 
-driver.get(f"https://www.linkedin.com/jobs/search?keywords={wanted_job}&location={wanted_location}&position=1&pagenum=0")
+    def scrape_jobs(self):
+        self.driver.get(f"https://www.linkedin.com/jobs/search?keywords={self.job_title}&location={self.location}&position=1&pagenum=0")
 
-time.sleep(5)
+        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'jobs-search__results-list')))
+        
+        try:
+            forum = self.driver.find_element(By.CLASS_NAME, 'jobs-search__results-list')
+            jobs_listed = forum.find_elements(By.TAG_NAME, 'li')
 
-forum = driver.find_element(By.CLASS_NAME, 'jobs-search__results-list')
-jobs_listed = forum.find_elements(By.TAG_NAME, 'li')
+            for li in jobs_listed[:3]:
+                try:
+                    title = li.find_element(By.CLASS_NAME, 'base-search-card__title').text
+                    location = li.find_element(By.CLASS_NAME, 'job-search-card__location').text
+                    listed_time = li.find_element(By.CLASS_NAME, "job-search-card__listdate").text
+                    link = li.find_element(By.TAG_NAME, 'a').get_attribute("href")
 
-for li in jobs_listed:
-    title = li.find_element(By.CLASS_NAME, 'base-search-card__title').text
-    link = li.find_element(By.TAG_NAME, 'a').get_attribute("href")
-    location = li.find_element(By.CLASS_NAME , 'job-search-card__location').text
-    listed_time = li.find_element(By.CLASS_NAME, "job-search-card__listdate").text
+                    self.jobs_data.append({
+                        'Title': title,
+                        'Location': location,
+                        'Listed Time': listed_time,
+                        'Link': link
+                    })
 
-    print(f"Title: {title}, LOCATION: {location}\n, TIME:{listed_time}  , link: {link}\n")
+                except Exception as e:
+                    print(f"Error extracting job details: {e}")
+
+        except Exception as e:
+            print(f"Error loading job listings: {e}")
+
+        finally:
+            self.driver.quit()
+

@@ -1,6 +1,9 @@
 # Mehran Ahmadzadeh
 # Ehsan rasouli
 import csv
+import json
+import os
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
@@ -8,6 +11,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+import time
 
 class LinkedInJobScraper:
     def __init__(self, job_title, location):
@@ -20,6 +24,27 @@ class LinkedInJobScraper:
         self.driver = webdriver.Firefox(
             service=Service(GeckoDriverManager().install()),
         )
+
+    def load_cookies(self):
+        load_dotenv()
+        cookies_str = os.getenv("LINKEDIN_COOKIES")
+        cookies = json.loads(cookies_str)
+
+        for cookie in cookies:
+            try:
+                self.driver.add_cookie(cookie)
+            except Exception as e:
+                print(f"Skipping cookie {cookie.get('name')}: {e}")
+
+
+        self.driver.refresh()
+        time.sleep(5)
+
+        print("✅ Logging successful. Cookies injected!")
+
+
+        self.driver.get("https://www.linkedin.com/jobs/search")
+        time.sleep(5)
 
     def scrape_jobs(self):
         self.driver.get(f"https://www.linkedin.com/jobs/search?keywords={self.job_title}&location={self.location}&position=1&pagenum=0")

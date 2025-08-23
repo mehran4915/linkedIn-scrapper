@@ -1,11 +1,7 @@
 # Mehran Ahmadzadeh
 # Ehsan rasouli
 
-
-import csv
 import json
-import os
-from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
@@ -15,6 +11,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 import time
+# env
+import os
+from dotenv import load_dotenv
+# excel
+from openpyxl import Workbook
 
 class LinkedInJobScraper:
     def __init__(self, job_title, location):
@@ -44,9 +45,6 @@ class LinkedInJobScraper:
 
         self.driver.refresh()
         time.sleep(5)
-
-        print("✅ Logging successful. Cookies injected!")
-
 
         self.driver.get("https://www.linkedin.com/jobs/search")
         time.sleep(5)
@@ -143,25 +141,46 @@ class LinkedInJobScraper:
         
         self.driver.quit()
 
-    def save_to_csv(self, filename="linkedin_jobs.csv"):
-            if not self.jobs_data:
-                print("No job data to save.")
-                return
+    def save_to_excel(self, filename):
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Jobs"
 
-            try:
-                with open(filename, mode='w', newline='', encoding='utf-8') as file:
-                    writer = csv.DictWriter(file, fieldnames=self.jobs_data[0].keys())
-                    writer.writeheader()
-                    writer.writerows(self.jobs_data)
-                print(f"Data saved to {filename}")
-            except Exception as e:
-                print(f"Failed to save CSV: {e}")
+            # Head
+            headers = ["Title", "Company", "Location", "Salary", "Link"]
+            ws.append(headers)
+
+            # rows
+            for job in self.jobs_data:
+                row = [
+                    job["title"],
+                    job["company"],
+                    job["location"],
+                    job["salary"],
+                    job["link"]
+                ]
+                ws.append(row)
+                ws.cell(ws.max_row, 5).hyperlink = job["link"]
+                ws.cell(ws.max_row, 5).style = "Hyperlink"
+
+            for col in ws.columns:
+                if col[0].column_letter == "C":
+                    ws.column_dimensions[col[0].column_letter].width = 50
+                else:
+                    ws.column_dimensions[col[0].column_letter].width = 25
+
+            wb.save(filename)
+            print(f"✅ Jobs saved to {filename}")
+
+        except Exception as e:
+            print(f"Failed to save Excel: {e}")
 
 
 
 if __name__ == "__main__":
-    job_wanted = input("what job are you seeking ? : ")
-    location_wanted = input("Where do you want to work ? : ")
+    job_wanted = input("what job are you looking for ?  ")
+    location_wanted = input("Where do you want to work ?  ")
     scraper = LinkedInJobScraper( job_wanted , location_wanted)
     scraper.scrape_jobs(4)
-    scraper.save_to_csv(f"{job_wanted}_{location_wanted}.csv")
+    scraper.save_to_excel(f"{job_wanted}_{location_wanted}.xlsx")
